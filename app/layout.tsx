@@ -1,4 +1,4 @@
-import type {Metadata,Viewport} from "next";import "@/styles/globals.css";import {site} from "@/lib/site";
+import type {Metadata,Viewport} from "next";import "@/styles/globals.css";import {site} from "@/lib/site";import {Analytics} from "@vercel/analytics/next";
 export const metadata:Metadata={metadataBase:new URL(site.url),title:{default:'Ramah Founding Era',template:'%s · Ramah'},description:site.description,alternates:{canonical:'/'},openGraph:{type:'website',siteName:'Ramah Digital',title:'History Has 1,000 Places.',description:site.description,images:[{url:'/images/founding-hero.png',width:1680,height:936,alt:'Travelers arriving at an African highland lodge at sunrise'}]},twitter:{card:'summary_large_image',title:'Ramah Founding Era',description:site.description,images:['/images/founding-hero.png']},robots:{index:true,follow:true}};
 export const viewport:Viewport={themeColor:'#171713',colorScheme:'light'};
-export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body><a className="skip" href="#main">Skip to content</a>{children}</body></html>}
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body><a className="skip" href="#main">Skip to content</a>{children}<Analytics /></body></html>}
