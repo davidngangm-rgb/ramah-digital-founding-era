@@ -1,0 +1,1 @@
+import {Header} from './Header';import {Footer} from './Footer';export function PublicShell({children,hero=false}:{children:React.ReactNode;hero?:boolean}){return <><Header overlay={hero}/><main id="main">{children}</main><Footer/></>}

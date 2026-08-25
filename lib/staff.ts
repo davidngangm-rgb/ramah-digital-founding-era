@@ -1,0 +1,4 @@
+import type {SupabaseClient} from '@supabase/supabase-js';
+export type StaffAccess={staffAccountId:string;displayName:string;status:string;roles:string[];permissions:string[];mfaRequired:boolean;currentAal?:string};
+export async function getStaffAccess(supabase:SupabaseClient):Promise<StaffAccess|null>{const {data,error}=await supabase.rpc('get_my_workspace_access');if(error)return null;const row=Array.isArray(data)?data[0]:data;if(!row||row.status!=='active')return null;return{staffAccountId:row.staff_account_id,displayName:row.display_name,status:row.status,roles:row.roles??[],permissions:row.permissions??[],mfaRequired:row.mfa_required===true,currentAal:row.current_aal}}
+export function hasFoundingAdminAccess(access:StaffAccess|null){return !!access?.permissions.some(permission=>permission.startsWith('founding.')||permission==='campaigns.manage')}

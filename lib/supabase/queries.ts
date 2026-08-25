@@ -1,0 +1,6 @@
+import {createClient} from "./server";
+export type CampaignStatus={campaignStatus:string;campaignStartsAt:string;campaignEndsAt:string;serverTime:string;travelerCapacity:number;hostCapacity:number;confirmedTravelers:number;confirmedHosts:number;pendingTravelerApplications:number;pendingHostApplications:number;availableTravelerPlaces:number;availableHostPlaces:number;totalConfirmed:number;totalAvailable:number};
+export type PublicFounder={public_slug:string;founder_number:string;founder_type:string;display_name:string|null;avatar_url:string|null;country:string|null;city:string|null;founder_story:string|null;property_name:string|null;property_photo_url:string|null};
+export async function getCampaign():Promise<CampaignStatus|null>{const sb=await createClient();const {data}=await sb.rpc('get_founding_campaign_status',{p_campaign_code:null});return data as CampaignStatus|null}
+export async function getFounders(limit=24):Promise<PublicFounder[]>{const sb=await createClient();const {data}=await sb.rpc('get_public_founders',{p_search:null,p_country:null,p_city:null,p_type:null,p_limit:limit,p_offset:0});return (data??[]) as PublicFounder[]}
+export async function getFounder(slug:string):Promise<PublicFounder|null>{const sb=await createClient();const {data}=await sb.rpc('get_public_founder',{p_slug:slug});return ((data??[])[0]??null) as PublicFounder|null}

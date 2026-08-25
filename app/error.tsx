@@ -1,0 +1,1 @@
+"use client";export default function Error({reset}:{reset:()=>void}){return <main className="not-found"><span className="eyebrow">Connection interrupted</span><h1>This page could not be prepared.</h1><p>Your account and application have not been changed.</p><button className="button dark" onClick={reset}>Try again</button></main>}

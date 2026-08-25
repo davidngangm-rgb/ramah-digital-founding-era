@@ -1,0 +1,1 @@
+import type {Metadata} from 'next';import {PortalHeader} from '@/components/PortalHeader';export const metadata:Metadata={title:'Founder Portal',robots:{index:false,follow:false}};export default function Layout({children}:{children:React.ReactNode}){return <><PortalHeader/><main id="main" className="portal-shell">{children}</main></>}

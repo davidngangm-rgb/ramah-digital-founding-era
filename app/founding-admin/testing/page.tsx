@@ -1,0 +1,6 @@
+import {setFoundingTestAccess} from '../actions';
+
+export default async function Page({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}){
+  const q=await searchParams;
+  return <section className="executive-section testing-access-page"><header className="executive-heading"><span>QA</span><div><small>Controlled pre-launch lifecycle</small><h1>Testing access.</h1></div><p>Grant only to internal test accounts. Public campaign dates, Founder capacity, approval, payment verification and atomic allocation remain unchanged.</p></header>{q.error&&<p className="form-error">{q.error}</p>}{q.notice&&<p className="notice">{q.notice}</p>}<form action={setFoundingTestAccess} className="application-form test-access-form"><label>Existing Ramah account email<input name="email" type="email" required/></label><label>Audit reason<input name="reason" minLength={8} required placeholder="Internal QA lifecycle testing"/></label><div className="actions"><button className="button dark" name="enabled" value="true">Grant testing access</button><button className="button" name="enabled" value="false">Revoke access</button></div><p className="muted">The account must sign out and sign in after a change so Supabase Auth refreshes its signed app-metadata claim.</p></form></section>;
+}
