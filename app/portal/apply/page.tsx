@@ -1,6 +1,7 @@
 import {createClient} from '@/lib/supabase/server';
 import {getCampaignApplicationAccess} from '@/lib/foundingCampaign';
 import {submitApplication} from '../actions';
+import {publicTierFor} from '@/lib/memberships';
 
 type Offer={application_type:'traveler'|'host';tier_code:string;display_name:string;amount:number|string};
 
@@ -13,6 +14,8 @@ export default async function Page({searchParams}:{searchParams:Promise<Record<s
   const role=user?.user_metadata?.role,type=role==='hotel_partner'?'host':'traveler';
   const {data:ownedProperty}=type==='host'&&user?await sb.from('hotels').select('id,name').eq('owner_id',user.id).order('created_at').limit(1).maybeSingle():{data:null};
   const available=((offers??[]) as Offer[]).filter(t=>t.application_type===type);
+  const requestedTier=String(user?.user_metadata?.requested_membership_tier??'');
+  const selectedTier=publicTierFor(requestedTier)?.kind===type&&available.some(t=>t.tier_code===requestedTier)?requestedTier:'';
   const access=getCampaignApplicationAccess(campaign?.campaignStatus,user);
   return <section className="form-page">
     <span className="eyebrow">Step 2 of 4 · Membership</span><h1>Choose your membership.</h1>
@@ -22,7 +25,7 @@ export default async function Page({searchParams}:{searchParams:Promise<Record<s
     {access.allowed?<form action={submitApplication} className="application-form">
       <input type="hidden" name="campaignCode" value={campaignCode}/><input type="hidden" name="applicationType" value={type}/><input type="hidden" name="idempotencyKey" value={crypto.randomUUID()}/>
       <label>Founder category<input value={type==='host'?'Founding Host':'Founding Traveler'} readOnly/></label>
-      <label>Membership tier<select name="tierCode" required defaultValue=""><option value="" disabled>Select a membership</option>{available.map(t=><option value={t.tier_code} key={t.tier_code}>{t.display_name} — {Number(t.amount)===0?'FREE':`US$${Number(t.amount)}`} one-time</option>)}</select></label>
+      <label>Membership tier<select name="tierCode" required defaultValue={selectedTier}><option value="" disabled>Select a membership</option>{available.map(t=><option value={t.tier_code} key={t.tier_code}>{t.display_name} — {Number(t.amount)===0?'FREE':`US$${Number(t.amount)}`} one-time</option>)}</select></label>
       {type==='host'&&ownedProperty?<><input type="hidden" name="propertyId" value={ownedProperty.id}/><div className="application-property"><span>Applying with your property</span><strong>{ownedProperty.name}</strong><small>Only the property owned by this Ramah account can be submitted.</small></div></>:null}
       <label>Referral code <span>Optional</span><input name="referralCode" maxLength={16}/></label><label>What brings you to Ramah? <span>Optional</span><textarea name="note" maxLength={1000}/></label>
       <fieldset><legend>Required legal acceptance</legend><label><input type="checkbox" name="terms_of_service" required/> Terms of Service</label><label><input type="checkbox" name="privacy_policy" required/> Privacy Policy</label><label><input type="checkbox" name="membership_agreement" required/> Membership Agreement</label><label><input type="checkbox" name="hall_of_founders_policy" required/> Founder Hall Policy</label><label><input type="checkbox" name="refund_policy" required/> Refund Policy</label><label><input type="checkbox" name="community_guidelines" required/> Community Guidelines</label></fieldset>

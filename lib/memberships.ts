@@ -23,3 +23,23 @@ export const membershipTiers: MembershipTier[] = [
 
 export const tiersFor = (kind: MembershipKind) => membershipTiers.filter((tier)=>tier.kind===kind);
 export const tierName = (code?: string|null) => membershipTiers.find((tier)=>tier.code===code)?.name ?? code?.replaceAll("_"," ") ?? "Not selected";
+
+export const publicTierCodes={
+  traveler:{explore:"explore",voyager:"voyager"},
+  host:{community:"community_host",founding:"founding_host",signature:"signature_host",prestige:"prestige_host",legacy:"legacy_host"},
+} as const;
+
+export type PublicTierCode="explore"|"voyager"|"community"|"founding"|"signature"|"prestige"|"legacy";
+
+export function parseMembershipSelection(type?:string|null,tier?:string|null){
+  if(type!=="host"&&type!=="traveler")return null;
+  const mapping=publicTierCodes[type] as Record<string,string>;
+  const tierCode=tier?mapping[tier]:undefined;
+  if(!tierCode)return null;
+  return {kind:type as MembershipKind,publicTier:tier as PublicTierCode,tierCode,tier:membershipTiers.find(item=>item.code===tierCode)!};
+}
+
+export function publicTierFor(code?:string|null){
+  for(const [kind,mapping] of Object.entries(publicTierCodes))for(const [publicTier,tierCode] of Object.entries(mapping))if(tierCode===code)return {kind:kind as MembershipKind,publicTier};
+  return null;
+}

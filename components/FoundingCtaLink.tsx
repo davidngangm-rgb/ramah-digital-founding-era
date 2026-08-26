@@ -1,0 +1,3 @@
+"use client";
+import Link from 'next/link';import {useEffect,useState} from 'react';import {FOUNDING_ERA_LAUNCH_ISO,getFoundingEraCta} from '@/lib/launch';
+export function FoundingCtaLink({kind,tier,className}:{kind:'host'|'traveler';tier:string;className:string}){const [label,setLabel]=useState(()=>getFoundingEraCta(kind));useEffect(()=>{const update=()=>setLabel(getFoundingEraCta(kind));update();const delay=Math.max(0,Date.parse(FOUNDING_ERA_LAUNCH_ISO)-Date.now());const timer=setTimeout(update,Math.min(delay+1000,2_147_483_647));return()=>clearTimeout(timer)},[kind]);return <Link className={className} href={`/auth/sign-up?type=${kind}&tier=${tier}`}>{label}</Link>}

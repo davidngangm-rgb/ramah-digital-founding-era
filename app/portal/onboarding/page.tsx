@@ -21,7 +21,7 @@ export default async function Page({searchParams}:{searchParams:Promise<Record<s
   const videoMedia=(videos??[]).filter(v=>v.video_url).map(v=>({url:v.video_url!,kind:'video' as const,label:v.title??'Property showcase'}));
 
   return <section className="onboarding-page">
-    <header className="onboarding-hero"><span className="eyebrow light">Pre-launch provisioning</span><h1>Arrive at launch<br/><em>already ready.</em></h1><p>Your information is written to the same Ramah account and backend the mobile application uses. Launch-only content stays dormant until authorized activation.</p></header>
+    <header className="onboarding-hero"><span className="eyebrow light">Pre-launch preparation</span><h1>Arrive at launch<br/><em>already ready.</em></h1><p>Your information remains connected to your Ramah account across Ramah services. Launch-only content stays private until authorized activation.</p></header>
     {q.error&&<p className="form-error">{q.error}</p>}{q.notice&&<p className="notice">{q.notice}</p>}
     <nav className="onboarding-steps" aria-label="Host onboarding progress"><a href="#profile">01 Profile</a>{host&&<><a href="#property">02 Property type</a><a href="#property-information">03 Information</a><a href="#property-features">04 Amenities</a><a href="#property-policies">05 Policies</a><a href="#rooms">06 Rooms</a><a href="#discover">07 Media</a><a href="#deal">08 Launch Deal</a><a href="#review">09 Review</a></>}</nav>
 

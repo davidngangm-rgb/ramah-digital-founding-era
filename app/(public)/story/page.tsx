@@ -1,7 +1,7 @@
 import type {Metadata} from 'next';
 import Image from 'next/image';
-import Link from 'next/link';
 import {PublicShell} from '@/components/PublicShell';
+import {FoundingCtaLink} from '@/components/FoundingCtaLink';
 
 export const metadata:Metadata={title:'The Founding Story',description:'The story behind Ramah Digital and why its one Founding Era will remain a permanent part of its history.',alternates:{canonical:'/story'}};
 
@@ -24,5 +24,5 @@ export default function Page(){return <PublicShell>
 
  <div className="story-chapters">{chapters.map((chapter,index)=><section className={`story-chapter${index%2?' reverse':''}`} key={chapter.number}><aside><span>{chapter.number}</span><small>THE FOUNDING STORY</small></aside><div className="story-chapter-title"><h2>{chapter.title}</h2></div><div className="story-copy">{chapter.body}</div></section>)}</div>
 
- <section className="story-finale"><span className="eyebrow light">07 · The Journey Starts Here</span><h2>“I was there<br/>when it all <em>began.</em>”</h2><div className="story-finale-copy"><p>Years from now, thousands—perhaps millions—of people may travel through Ramah.</p><p>Most will discover a mature platform with established communities, trusted hosts, and thriving destinations.</p><p>Only a small number will be able to say those words.</p><p>Those people will always have a place in Ramah&apos;s story.</p><p>This is your invitation to become one of them.</p><strong>Welcome to the Ramah Digital Founding Era.</strong></div><div className="actions"><Link className="button light" href="/auth/sign-up?type=traveler">Become a Founding Traveler</Link><Link className="button outline-light" href="/auth/sign-up?type=host">Join as a Founding Host</Link></div></section>
+ <section className="story-finale"><span className="eyebrow light">07 · The Journey Starts Here</span><h2>“I was there<br/>when it all <em>began.</em>”</h2><div className="story-finale-copy"><p>Years from now, thousands—perhaps millions—of people may travel through Ramah.</p><p>Most will discover a mature platform with established communities, trusted hosts, and thriving destinations.</p><p>Only a small number will be able to say those words.</p><p>Those people will always have a place in Ramah&apos;s story.</p><p>This is your invitation to become one of them.</p><strong>Welcome to the Ramah Digital Founding Era.</strong></div><div className="actions"><FoundingCtaLink className="button light" kind="traveler" tier="explore"/><FoundingCtaLink className="button outline-light" kind="host" tier="community"/></div></section>
  </PublicShell>}
