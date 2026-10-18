@@ -1,3 +1,35 @@
 "use client";
-import Image from 'next/image';import Link from 'next/link';import {useEffect,useState} from 'react';import {publicNav} from '@/lib/site';import {FOUNDING_ERA_LAUNCH_ISO,getFoundingEraCta} from '@/lib/launch';
-export function Header({overlay=false}:{overlay?:boolean}){const [cta,setCta]=useState(()=>getFoundingEraCta());useEffect(()=>{const update=()=>setCta(getFoundingEraCta());update();const delay=Math.max(0,Date.parse(FOUNDING_ERA_LAUNCH_ISO)-Date.now());const timer=setTimeout(update,Math.min(delay+1000,2_147_483_647));return()=>clearTimeout(timer)},[]);return <header className={`site-header${overlay?' overlay':''}`}><Link className="brand" href="/" aria-label="Ramah Founding Era home"><Image src="/ramah-app-icon.png" width={40} height={40} priority alt=""/><b>RAMAH</b></Link><nav aria-label="Primary navigation">{publicNav.map(([label,href])=><Link key={href} href={href}>{label}</Link>)}</nav><div className="header-actions"><Link className="text-link" href="/auth/sign-in">Sign in</Link><Link className="button compact" href="/auth/sign-up">{cta}</Link></div><details className="mobile-menu"><summary aria-label="Open navigation"><span/><span/><span/></summary><div>{publicNav.map(([label,href])=><Link key={href} href={href}>{label}</Link>)}<Link href="/auth/sign-in">Sign in</Link><Link href="/auth/sign-up">{cta}</Link></div></details></header>}
+
+import Image from "next/image";
+import Link from "next/link";
+import {useState} from "react";
+import {publicNav,secondaryNav} from "@/lib/site";
+
+export function Header({overlay=false}:{overlay?:boolean}){
+  const [mobileOpen,setMobileOpen]=useState(false);
+
+  return <header className={`rd-header${overlay?" rd-header--overlay":""}`}>
+    <Link className="rd-brand" href="/" aria-label="Ramah Digital home">
+      <Image src="/ramah-app-icon.png" width={40} height={40} priority alt=""/>
+      <span><b>RAMAH</b><small>DIGITAL</small></span>
+    </Link>
+    <nav className="rd-nav" aria-label="Primary navigation">
+      {publicNav.slice(1).map(([label,href])=><Link key={href} href={href}>{label}</Link>)}
+    </nav>
+    <div className="rd-header-actions">
+      <Link className="rd-text-link" href="/auth/sign-in">Sign in</Link>
+      <Link className="rd-button rd-button--small" href="/">Founding Era</Link>
+    </div>
+    <div className="rd-mobile-menu">
+      <button
+        type="button"
+        className="rd-mobile-menu__trigger"
+        aria-label={mobileOpen?"Close navigation":"Open navigation"}
+        aria-expanded={mobileOpen}
+        aria-controls="rd-mobile-navigation"
+        onClick={()=>setMobileOpen((open)=>!open)}
+      ><span/><span/><span/></button>
+      <div id="rd-mobile-navigation" hidden={!mobileOpen}><b>Founding Era</b>{publicNav.map(([label,href])=><Link key={href} href={href}>{label}</Link>)}<span>Account and help</span><Link href="/auth/sign-in">Sign in</Link>{secondaryNav.map(([label,href])=><Link key={href} href={href}>{label}</Link>)}</div>
+    </div>
+  </header>;
+}

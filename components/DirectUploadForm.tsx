@@ -5,7 +5,7 @@ import Image from 'next/image';
 import {createClient} from '@/lib/supabase/browser';
 
 type ServerAction=(formData:FormData)=>Promise<void>;
-type InitialMedia={url:string;kind:'image'|'video';label:string};
+type InitialMedia={url:string;kind:'image'|'video'|'document';label:string};
 type Preview=InitialMedia&{key:string};
 
 function extension(file:File){
@@ -18,11 +18,13 @@ function extension(file:File){
   return 'bin';
 }
 
-async function uploadDirect(file:File,bucket:string,userId:string,onProgress:(value:number)=>void){
+function safeFileName(name:string){return name.normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'-').replace(/^-+|-+$/g,'').slice(-100)||'document'}
+
+async function uploadDirect(file:File,bucket:string,userId:string,output:string,isPrivate:boolean,onProgress:(value:number)=>void){
   const sb=createClient();
   const {data:{session}}=await sb.auth.getSession();
   if(!session)throw new Error('Your session expired. Sign in and retry the upload.');
-  const path=`${userId}/founding-${crypto.randomUUID()}.${extension(file)}`;
+  const path=isPrivate?`${userId}/${output}/${crypto.randomUUID()}-${safeFileName(file.name)}`:`${userId}/founding-${crypto.randomUUID()}.${extension(file)}`;
   const base=process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const apiKey=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
   await new Promise<void>((resolve,reject)=>{
@@ -39,7 +41,7 @@ async function uploadDirect(file:File,bucket:string,userId:string,onProgress:(va
     xhr.send(file);
   });
   onProgress(100);
-  return sb.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+  return isPrivate?path:sb.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }
 
 export function DirectUploadForm({action,className,children,initialMedia=[]}:{action:ServerAction;className?:string;children:React.ReactNode;initialMedia?:InitialMedia[]}){
@@ -59,7 +61,7 @@ export function DirectUploadForm({action,className,children,initialMedia=[]}:{ac
     formRef.current?.querySelectorAll<HTMLInputElement>('input[type="file"][data-upload-bucket]').forEach(input=>{
       Array.from(input.files??[]).forEach((file,index)=>{
         const url=URL.createObjectURL(file);objectUrls.current.push(url);
-        next.push({key:`${input.dataset.uploadOutput}-${index}-${file.name}`,url,kind:file.type.startsWith('video/')?'video':'image',label:file.name});
+        next.push({key:`${input.dataset.uploadOutput}-${index}-${file.name}`,url,kind:file.type.startsWith('video/')?'video':file.type.startsWith('image/')?'image':'document',label:file.name});
       });
     });
     setPreviews(next);setError(null);
@@ -81,8 +83,8 @@ export function DirectUploadForm({action,className,children,initialMedia=[]}:{ac
         const files=Array.from(input.files??[]);
         for(let index=0;index<files.length;index++){
           const file=files[index],key=`${output}-${index}`;
-          const url=await uploadDirect(file,bucket,user.id,value=>setProgress(current=>({...current,[key]:value})));
-          metadata.append(output,url);
+          const reference=await uploadDirect(file,bucket,user.id,output,input.dataset.uploadPrivate==='true',value=>setProgress(current=>({...current,[key]:value})));
+          metadata.append(output,reference);
         }
       }
       await action(metadata);
@@ -96,7 +98,7 @@ export function DirectUploadForm({action,className,children,initialMedia=[]}:{ac
   return <form ref={formRef} onSubmit={submit} onChange={previewSelection} className={className}>
     {children}
     {(media.length>0||Object.keys(progress).length>0||error)&&<div className="upload-feedback" aria-live="polite">
-      {media.length>0&&<div className="upload-previews">{media.map(item=><figure key={item.key}>{item.kind==='video'?<video src={item.url} controls preload="metadata"/>:<Image src={item.url} alt="" width={320} height={240} unoptimized/>}<figcaption>{item.label}</figcaption></figure>)}</div>}
+      {media.length>0&&<div className="upload-previews">{media.map(item=><figure key={item.key}>{item.kind==='video'?<video src={item.url} controls preload="metadata"/>:item.kind==='image'?<Image src={item.url} alt="" width={320} height={240} unoptimized/>:<a href={item.url} target="_blank" rel="noreferrer">Open document</a>}<figcaption>{item.label}</figcaption></figure>)}</div>}
       {Object.entries(progress).map(([key,value])=><div className="upload-progress" key={key}><span><b>Uploading media</b><small>{value}%</small></span><progress max="100" value={value}>{value}%</progress></div>)}
       {error&&<p className="form-error" role="alert">{error} Your selections are preserved—use the button to retry.</p>}
     </div>}

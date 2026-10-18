@@ -1,0 +1,7 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import {usePathname} from "next/navigation";
+const nav=[["Overview","/creator-studio"],["My Circle","/creator-studio/circle"],["Members","/creator-studio/members"],["Waitlist","/creator-studio/waitlist"],["Content","/creator-studio/content"],["Experiences & Trips","/creator-studio/experiences"],["Creator Offers","/creator-studio/offers"],["Referrals","/creator-studio/referrals"],["Earnings","/creator-studio/earnings"],["Analytics","/creator-studio/analytics"],["Profile","/creator-studio/profile"]] as const;
+export function CreatorStudioShell({children}:{children:React.ReactNode}){const pathname=usePathname();const active=nav.find(([,href])=>href===pathname)?.[1]??"/creator-studio";return <div className="rd-studio"><aside className="rd-studio-sidebar"><Link href="/" className="rd-studio-brand"><Image src="/ramah-app-icon.png" width={34} height={34} alt=""/><span>RAMAH<small>CREATOR STUDIO</small></span></Link><nav aria-label="Creator Studio">{nav.map(([label,href])=><Link key={href} href={href} aria-current={href===active?"page":undefined}>{label}</Link>)}</nav><Link className="rd-studio-public" href="/">View Ramah</Link></aside><header className="rd-studio-mobile"><Link href="/">Ramah</Link><select aria-label="Creator Studio section" value={active} onChange={(event)=>window.location.assign(event.target.value)}>{nav.map(([label,href])=><option key={href} value={href}>{label}</option>)}</select></header><main id="main" className="rd-studio-main">{children}</main></div>}

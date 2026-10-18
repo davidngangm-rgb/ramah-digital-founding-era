@@ -1,0 +1,43 @@
+name: Website visual QA
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Optional staging or preview URL; blank runs the local Next server
+        required: false
+        type: string
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VISUAL_BASE_URL: ${{ inputs.base_url }}
+      VISUAL_CREATOR_SLUG: ${{ vars.VISUAL_CREATOR_SLUG }}
+      VISUAL_CIRCLE_SLUG: ${{ vars.VISUAL_CIRCLE_SLUG }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_FOUNDING_CAMPAIGN_CODE: founding-era-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm run visual:test
+      - name: Upload screenshots, traces and HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ramah-visual-qa-${{ github.run_id }}
+          path: .artifacts/
+          if-no-files-found: error
+          retention-days: 14

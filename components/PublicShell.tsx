@@ -1,1 +1,3 @@
-import {Header} from './Header';import {Footer} from './Footer';export function PublicShell({children,hero=false}:{children:React.ReactNode;hero?:boolean}){return <><Header overlay={hero}/><main id="main">{children}</main><Footer/></>}
+import {Header} from "./Header";
+import {Footer} from "./Footer";
+export function PublicShell({children,hero=false}:{children:React.ReactNode;hero?:boolean}){return <div className="rd-site"><Header overlay={hero}/><main id="main">{children}</main><Footer/></div>}

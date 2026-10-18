@@ -1,0 +1,6 @@
+"use client";
+import {useActionState} from "react";
+import {joinCircleWaitlist,type WaitlistState} from "@/app/circles/actions";
+
+const initialState:WaitlistState={status:"idle",message:""};
+export function CircleWaitlistForm({slug}:{slug:string}){const [state,action,pending]=useActionState(joinCircleWaitlist,initialState);if(state.status==="success")return <div className="rd-form-success" role="status"><b>You’re on the list.</b><p>We’ll use this address only for this Circle’s waitlist and launch updates.</p></div>;return <form action={action} className="rd-waitlist-form"><input type="hidden" name="slug" value={slug}/><input type="hidden" name="source" value="creator_circle"/><label htmlFor="waitlist-email">Email address</label><div><input id="waitlist-email" name="email" type="email" autoComplete="email" required placeholder="you@example.com"/><button className="rd-button" disabled={pending}>{pending?"Joining…":"Join waitlist — free"}</button></div><label className="rd-consent"><input name="consent" type="checkbox" value="yes" required/><span>I agree to receive this Circle’s waitlist and launch updates. I can unsubscribe.</span></label>{state.status==="error"&&<p className="rd-form-error" role="alert">{state.message}</p>}</form>}
