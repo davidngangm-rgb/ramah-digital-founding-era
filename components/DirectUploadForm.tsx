@@ -2,10 +2,13 @@
 
 import {useEffect,useRef,useState} from 'react';
 import Image from 'next/image';
+import {useRouter} from 'next/navigation';
 import {createClient} from '@/lib/supabase/browser';
 import {captureUploadSubmission} from '@/lib/upload-submission';
+import {validateUpload,validateUploadContent} from '@/lib/upload-policy';
 
-type ServerAction=(formData:FormData)=>Promise<void>;
+type SaveResult={ok:true;href:string}|{ok:false;error:string};
+type ServerAction=(formData:FormData)=>Promise<SaveResult>;
 type InitialMedia={url:string;kind:'image'|'video'|'document';label:string};
 type Preview=InitialMedia&{key:string};
 type UploadRecord={path:string;reference?:string};
@@ -42,7 +45,11 @@ async function uploadDirect(file:File,bucket:string,path:string,isPrivate:boolea
     xhr.upload.onprogress=event=>{if(event.lengthComputable)onProgress(Math.round((event.loaded/event.total)*100))};
     xhr.onerror=()=>reject(new Error('The upload was interrupted. Check your connection and retry.'));
     xhr.onabort=()=>reject(new Error('The upload was interrupted. Retry when ready.'));
-    xhr.onload=()=>xhr.status>=200&&xhr.status<300?resolve():reject(new StorageUploadError(`Upload failed (${xhr.status}). Please retry.`,xhr.status));
+    xhr.onload=()=>{
+      if(xhr.status>=200&&xhr.status<300){resolve();return}
+      const message=xhr.status===401?'Your session expired. Sign in again, then retry.':xhr.status===403?'You do not have permission to upload this file.':xhr.status===413?'This file exceeds the storage size limit.':xhr.status===415?'This file format is not allowed.':`Upload failed (${xhr.status}). Please retry.`;
+      reject(new StorageUploadError(message,xhr.status));
+    };
     xhr.send(file);
   });}catch(error){
     if(!(error instanceof StorageUploadError)||error.status!==409)throw error;
@@ -56,6 +63,7 @@ async function uploadDirect(file:File,bucket:string,path:string,isPrivate:boolea
 }
 
 export function DirectUploadForm({action,className,children,initialMedia=[]}:{action:ServerAction;className?:string;children:React.ReactNode;initialMedia?:InitialMedia[]}){
+  const router=useRouter();
   const formRef=useRef<HTMLFormElement>(null);
   const objectUrls=useRef<string[]>([]);
   const uploadedFiles=useRef<WeakMap<File,Map<string,UploadRecord>>>(new WeakMap());
@@ -63,6 +71,7 @@ export function DirectUploadForm({action,className,children,initialMedia=[]}:{ac
   const [previews,setPreviews]=useState<Preview[]>([]);
   const [progress,setProgress]=useState<Record<string,number>>({});
   const [busy,setBusy]=useState(false);
+  const [saving,setSaving]=useState(false);
   const [error,setError]=useState<string|null>(null);
 
   useEffect(()=>()=>objectUrls.current.forEach(URL.revokeObjectURL),[]);
@@ -99,6 +108,8 @@ export function DirectUploadForm({action,className,children,initialMedia=[]}:{ac
         if(!bucket||!output)continue;
         for(let index=0;index<files.length;index++){
           const file=files[index],key=`${output}-${index}`;
+          validateUpload(file,bucket);
+          await validateUploadContent(file);
           let records=uploadedFiles.current.get(file);
           if(!records){records=new Map();uploadedFiles.current.set(file,records)}
           const cacheKey=`${user.id}:${bucket}:${output}:${isPrivate}`;
@@ -109,12 +120,16 @@ export function DirectUploadForm({action,className,children,initialMedia=[]}:{ac
           metadata.append(output,reference);
         }
       }
-      await action(metadata);
+      setSaving(true);
+      const result=await action(metadata);
+      if(!result?.ok)throw new Error(result?.error||'The application could not be saved. Please retry.');
+      router.push(result.href);
     }catch(caught){
       setError(caught instanceof Error?caught.message:'Upload failed. Please retry.');
     }finally{
       submitting.current=false;
       setBusy(false);
+      setSaving(false);
     }
   }
 
@@ -126,6 +141,6 @@ export function DirectUploadForm({action,className,children,initialMedia=[]}:{ac
       {Object.entries(progress).map(([key,value])=><div className="upload-progress" key={key}><span><b>Uploading media</b><small>{value}%</small></span><progress max="100" value={value}>{value}%</progress></div>)}
       {error&&<p className="form-error" role="alert">{error} Your selections are preserved—use the button to retry.</p>}
     </div>}
-    <button className="button dark wide" type="submit" disabled={busy}>{busy?'Uploading securely…':error?'Retry upload and save':'Save and continue'}</button>
+    <button className="button dark wide" type="submit" disabled={busy}>{busy?saving?'Saving your application…':'Uploading securely…':error?'Retry upload and save':'Save and continue'}</button>
   </form>;
 }

@@ -11,7 +11,7 @@ test('successful Traveler and Partner submissions enter the dashboard only after
   const portal=read('app/portal/actions.ts');
   const creator=read('app/(public)/creators/apply/actions.ts');
   assert.match(portal,/if\(error\)redirect[\s\S]*redirect\("\/portal\?notice=Application submitted"\)/);
-  assert.match(creator,/if\(planError\)redirect[\s\S]*redirect\("\/portal\?notice=Application successfully submitted"\)/);
+  assert.match(creator,/if\(planError\)return \{ok:false as const[\s\S]*return \{ok:true as const,href:'\/portal\?notice=Application successfully submitted'\}/);
 });
 
 test('applicant-facing Founding payment initiation is disabled without touching booking payments',()=>{
