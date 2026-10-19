@@ -8,6 +8,7 @@ import {PUBLIC_SITE_URL} from '@/lib/site';
 
 function text(form:FormData,key:string){return String(form.get(key)??'').trim()}
 function safeNext(value:string,fallback='/portal'){return value.startsWith('/')&&!value.startsWith('//')?value:fallback}
+function withAnalyticsMarker(value:string,event:string,category:string,verified=false){const url=new URL(safeNext(value),'https://ramah.invalid');url.searchParams.set('rd_event',event);url.searchParams.set('rd_category',category);if(verified)url.searchParams.set('rd_verified','1');return `${url.pathname}${url.search}${url.hash}`}
 
 export async function signIn(form:FormData){
   const sb=await createClient();
@@ -91,7 +92,7 @@ export async function signUp(form:FormData){
     if(profileError)redirect(`${retryPath}&error=${encodeURIComponent('Your account is ready, but your Ramah profile could not be initialized. Please sign in and try again.')}`);
   }
 
-  redirect(destination);
+  redirect(isNewAccount?withAnalyticsMarker(destination,'sign_up',creatorIntent?'creator':type==='host'?(vertical==='experience'?'experience_partner':'stay_partner'):'traveler'):destination);
 }
 
 export async function verifySignupCode(form:FormData){
@@ -102,7 +103,8 @@ export async function verifySignupCode(form:FormData){
   const metadata=data.user.user_metadata;
   const {error:profileError}=await sb.from('profiles').upsert({id:data.user.id,email:data.user.email??email,full_name:String(metadata.full_name??''),role:String(metadata.role??'traveler'),business_name:metadata.business_name??null,property_type:metadata.property_type??null},{onConflict:'id',ignoreDuplicates:true});
   if(profileError)redirect(`/auth/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}&error=${encodeURIComponent('Your email is verified, but profile setup needs attention. Sign in and contact Ramah support if this continues.')}`);
-  redirect(next);
+  const metadataCategory=metadata.creator_application_intent?'creator':metadata.role==='hotel_partner'?(metadata.partner_vertical==='experience'?'experience_partner':'stay_partner'):'traveler';
+  redirect(withAnalyticsMarker(next,'sign_up',metadataCategory,true));
 }
 
 export async function resendSignupCode(form:FormData){

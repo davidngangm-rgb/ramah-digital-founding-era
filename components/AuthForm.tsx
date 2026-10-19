@@ -1,9 +1,12 @@
+"use client";
 import {signIn,signUp} from '@/app/auth/actions';
 import {PROPERTY_TYPES} from '@/lib/onboarding';import Link from 'next/link';
+import {trackRamahEvent,type ApplicantCategory} from '@/lib/analytics';
 
 export function AuthForm({mode,type='traveler',tier,vertical='stay',referral,error,next}:{mode:'in'|'up';type?:string;tier?:string;vertical?:'stay'|'experience';referral?:string;error?:string;next?:string}){
   const experiencePartner=mode==='up'&&type==='host'&&vertical==='experience';
-  return <form action={mode==='in'?signIn:signUp} className="auth-form">
+  const category:ApplicantCategory=type==='creator'?'creator':type==='host'?(vertical==='experience'?'experience_partner':'stay_partner'):'traveler';
+  return <form action={mode==='in'?signIn:signUp} className="auth-form" onSubmit={()=>{if(mode==='up')trackRamahEvent('begin_signup',{applicant_category:category,membership_tier:tier});}}>
     <input type="hidden" name="type" value={type}/>
     <input type="hidden" name="tier" value={tier}/>
     <input type="hidden" name="vertical" value={vertical}/>

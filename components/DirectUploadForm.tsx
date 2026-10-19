@@ -6,6 +6,7 @@ import {useRouter} from 'next/navigation';
 import {createClient} from '@/lib/supabase/browser';
 import {captureUploadSubmission} from '@/lib/upload-submission';
 import {validateUpload,validateUploadContent} from '@/lib/upload-policy';
+import {trackRamahEvent,type ApplicantCategory} from '@/lib/analytics';
 
 type SaveResult={ok:true;href:string}|{ok:false;error:string};
 type ServerAction=(formData:FormData)=>Promise<SaveResult>;
@@ -123,6 +124,13 @@ export function DirectUploadForm({action,className,children,initialMedia=[]}:{ac
       setSaving(true);
       const result=await action(metadata);
       if(!result?.ok)throw new Error(result?.error||'The application could not be saved. Please retry.');
+      if(window.location.pathname.startsWith('/portal/onboarding')){
+        const has=(name:string)=>Boolean(form.elements.namedItem(name));
+        const step=has('launchVideo')||has('showcaseVideo')?'launch-video':has('experienceName')?'experience':has('providerType')?'business':has('propertyName')?'property':has('roomName')?'rooms':has('fullName')?'profile':'review';
+        const params=new URLSearchParams(window.location.search),vertical=params.get('vertical')||form.querySelector<HTMLInputElement>('[name="partnerVertical"]')?.value;
+        const category:ApplicantCategory=window.location.pathname.includes('/experience')||vertical==='experience'?'experience_partner':form.querySelector<HTMLInputElement>('[name="propertyId"]')?'stay_partner':'traveler';
+        trackRamahEvent('onboarding_step_completed',{applicant_category:category,onboarding_step:step});
+      }
       router.push(result.href);
     }catch(caught){
       setError(caught instanceof Error?caught.message:'Upload failed. Please retry.');

@@ -4,7 +4,9 @@ import "@/styles/ramah-web.css";
 import "@/styles/rebuild.css";
 import "@/styles/master.css";
 import "@/styles/founding-platform.css";
+import "@/styles/analytics.css";
 import {site} from "@/lib/site";
+import {AnalyticsProvider} from "@/components/AnalyticsProvider";
 
 export const metadata:Metadata={
   metadataBase:new URL(site.url),
@@ -16,4 +18,4 @@ export const metadata:Metadata={
   robots:{index:true,follow:true}
 };
 export const viewport:Viewport={themeColor:"#ffffff",colorScheme:"light"};
-export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body><a className="skip" href="#main">Skip to content</a>{children}</body></html>}
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body><a className="skip" href="#main">Skip to content</a><AnalyticsProvider>{children}</AnalyticsProvider></body></html>}

@@ -14,7 +14,11 @@ export async function GET(request:Request){
     if(!result.error&&result.data.user){
       const metadata=result.data.user.user_metadata??{};
       const {error:profileError}=await sb.from('profiles').upsert({id:result.data.user.id,email:result.data.user.email,full_name:String(metadata.full_name??''),role:String(metadata.role??'traveler'),business_name:metadata.business_name??null,property_type:metadata.property_type??null},{onConflict:'id',ignoreDuplicates:true});
-      if(!profileError)return NextResponse.redirect(new URL(next,url.origin));
+      if(!profileError){
+        const isSignup=requestedType==='signup'||(!requestedType&&next.startsWith('/portal/onboarding'));
+        if(isSignup){const category=metadata.creator_application_intent?'creator':metadata.role==='hotel_partner'?(metadata.partner_vertical==='experience'?'experience_partner':'stay_partner'):'traveler';const destination=new URL(next,url.origin);destination.searchParams.set('rd_event','sign_up');destination.searchParams.set('rd_category',category);destination.searchParams.set('rd_verified','1');return NextResponse.redirect(destination)}
+        return NextResponse.redirect(new URL(next,url.origin));
+      }
     }
   }
   const failure=new URL('/auth/sign-in',url.origin);failure.searchParams.set('error','This authentication link is invalid or has expired. Request a new code or recovery email.');return NextResponse.redirect(failure);
