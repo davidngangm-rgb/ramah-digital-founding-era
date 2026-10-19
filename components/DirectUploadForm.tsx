@@ -3,10 +3,16 @@
 import {useEffect,useRef,useState} from 'react';
 import Image from 'next/image';
 import {createClient} from '@/lib/supabase/browser';
+import {captureUploadSubmission} from '@/lib/upload-submission';
 
 type ServerAction=(formData:FormData)=>Promise<void>;
 type InitialMedia={url:string;kind:'image'|'video'|'document';label:string};
 type Preview=InitialMedia&{key:string};
+type UploadRecord={path:string;reference?:string};
+
+class StorageUploadError extends Error{
+  constructor(message:string,readonly status:number){super(message)}
+}
 
 function extension(file:File){
   const fromName=file.name.split('.').pop()?.replace(/[^a-z0-9]/gi,'').toLowerCase();
@@ -20,14 +26,13 @@ function extension(file:File){
 
 function safeFileName(name:string){return name.normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'-').replace(/^-+|-+$/g,'').slice(-100)||'document'}
 
-async function uploadDirect(file:File,bucket:string,userId:string,output:string,isPrivate:boolean,onProgress:(value:number)=>void){
+async function uploadDirect(file:File,bucket:string,path:string,isPrivate:boolean,onProgress:(value:number)=>void){
   const sb=createClient();
   const {data:{session}}=await sb.auth.getSession();
   if(!session)throw new Error('Your session expired. Sign in and retry the upload.');
-  const path=isPrivate?`${userId}/${output}/${crypto.randomUUID()}-${safeFileName(file.name)}`:`${userId}/founding-${crypto.randomUUID()}.${extension(file)}`;
   const base=process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const apiKey=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
-  await new Promise<void>((resolve,reject)=>{
+  try{await new Promise<void>((resolve,reject)=>{
     const xhr=new XMLHttpRequest();
     xhr.open('POST',`${base}/storage/v1/object/${encodeURIComponent(bucket)}/${path.split('/').map(encodeURIComponent).join('/')}`);
     xhr.setRequestHeader('Authorization',`Bearer ${session.access_token}`);
@@ -37,9 +42,15 @@ async function uploadDirect(file:File,bucket:string,userId:string,output:string,
     xhr.upload.onprogress=event=>{if(event.lengthComputable)onProgress(Math.round((event.loaded/event.total)*100))};
     xhr.onerror=()=>reject(new Error('The upload was interrupted. Check your connection and retry.'));
     xhr.onabort=()=>reject(new Error('The upload was interrupted. Retry when ready.'));
-    xhr.onload=()=>xhr.status>=200&&xhr.status<300?resolve():reject(new Error(`Upload failed (${xhr.status}). ${xhr.responseText||'Please retry.'}`));
+    xhr.onload=()=>xhr.status>=200&&xhr.status<300?resolve():reject(new StorageUploadError(`Upload failed (${xhr.status}). Please retry.`,xhr.status));
     xhr.send(file);
-  });
+  });}catch(error){
+    if(!(error instanceof StorageUploadError)||error.status!==409)throw error;
+    // A previous attempt can finish on Storage even if the browser loses its
+    // response. Reuse only the exact owned object at this attempt's path.
+    const {data, error:lookupError}=await sb.storage.from(bucket).info(path);
+    if(lookupError||data?.size!==file.size)throw error;
+  }
   onProgress(100);
   return isPrivate?path:sb.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }
@@ -47,6 +58,8 @@ async function uploadDirect(file:File,bucket:string,userId:string,output:string,
 export function DirectUploadForm({action,className,children,initialMedia=[]}:{action:ServerAction;className?:string;children:React.ReactNode;initialMedia?:InitialMedia[]}){
   const formRef=useRef<HTMLFormElement>(null);
   const objectUrls=useRef<string[]>([]);
+  const uploadedFiles=useRef<WeakMap<File,Map<string,UploadRecord>>>(new WeakMap());
+  const submitting=useRef(false);
   const [previews,setPreviews]=useState<Preview[]>([]);
   const [progress,setProgress]=useState<Record<string,number>>({});
   const [busy,setBusy]=useState(false);
@@ -69,27 +82,38 @@ export function DirectUploadForm({action,className,children,initialMedia=[]}:{ac
 
   async function submit(event:React.FormEvent<HTMLFormElement>){
     event.preventDefault();
-    if(busy)return;
+    if(submitting.current)return;
+    const form=event.currentTarget;
+    if(!(form instanceof HTMLFormElement)){setError('The form is unavailable. Please retry.');return;}
+    // React does not keep currentTarget populated across an await. Snapshot
+    // both the form fields and the actual File objects synchronously.
+    const {metadata,selections}=captureUploadSubmission(form);
+    submitting.current=true;
     setBusy(true);setError(null);setProgress({});
     try{
       const sb=createClient();
       const {data:{user}}=await sb.auth.getUser();
       if(!user)throw new Error('Your session expired. Sign in and retry.');
-      const metadata=new FormData(event.currentTarget);
-      const inputs=Array.from(event.currentTarget.querySelectorAll<HTMLInputElement>('input[type="file"][data-upload-bucket]'));
-      for(const input of inputs){
-        const bucket=input.dataset.uploadBucket,output=input.dataset.uploadOutput;
+      for(const input of selections){
+        const {bucket,output,files,isPrivate}=input;
         if(!bucket||!output)continue;
-        const files=Array.from(input.files??[]);
         for(let index=0;index<files.length;index++){
           const file=files[index],key=`${output}-${index}`;
-          const reference=await uploadDirect(file,bucket,user.id,output,input.dataset.uploadPrivate==='true',value=>setProgress(current=>({...current,[key]:value})));
+          let records=uploadedFiles.current.get(file);
+          if(!records){records=new Map();uploadedFiles.current.set(file,records)}
+          const cacheKey=`${user.id}:${bucket}:${output}:${isPrivate}`;
+          let upload=records.get(cacheKey);
+          if(!upload){upload={path:isPrivate?`${user.id}/${output}/${crypto.randomUUID()}-${safeFileName(file.name)}`:`${user.id}/founding-${crypto.randomUUID()}.${extension(file)}`};records.set(cacheKey,upload)}
+          const reference=upload.reference??await uploadDirect(file,bucket,upload.path,isPrivate,value=>setProgress(current=>({...current,[key]:value})));
+          upload.reference=reference;
           metadata.append(output,reference);
         }
       }
       await action(metadata);
     }catch(caught){
       setError(caught instanceof Error?caught.message:'Upload failed. Please retry.');
+    }finally{
+      submitting.current=false;
       setBusy(false);
     }
   }

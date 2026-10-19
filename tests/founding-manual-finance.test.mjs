@@ -62,11 +62,13 @@ test('Partner readiness remains server-authoritative for three rooms and one com
 test('private Partner evidence uses authenticated owner uploads and signed reviewer links',()=>{
   const sql=read('../supabase/migrations/20261013500001_founding_private_verification_documents.sql');
   const upload=read('components/DirectUploadForm.tsx');
+  const snapshot=read('lib/upload-submission.ts');
   const review=read('app/founding-admin/documents/page.tsx');
   assert.match(sql,/founding-verification-documents',false,10485760/);
   assert.match(sql,/storage\.foldername\(name\)/);
   assert.match(sql,/founding\.applications\.review/);
-  assert.match(upload,/input\.dataset\.uploadPrivate==='true'/);
+  assert.match(upload,/uploadDirect\(file,bucket,upload\.path,isPrivate/);
+  assert.match(snapshot,/input\.dataset\.uploadPrivate==='true'/);
   assert.match(review,/createSignedUrls\(paths,600\)/);
 });
 
