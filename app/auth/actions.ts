@@ -4,6 +4,7 @@ import {createClient} from '@/lib/supabase/server';
 import {getStaffAccess,hasFoundingAdminAccess} from '@/lib/staff';
 import {redirect} from 'next/navigation';
 import {parseMembershipSelection} from '@/lib/memberships';
+import {PUBLIC_SITE_URL} from '@/lib/site';
 
 function text(form:FormData,key:string){return String(form.get(key)??'').trim()}
 function safeNext(value:string,fallback='/portal'){return value.startsWith('/')&&!value.startsWith('//')?value:fallback}
@@ -55,7 +56,7 @@ export async function signUp(form:FormData){
   if(type==='host'&&vertical==='experience'&&!['experience_provider','tour_operator'].includes(experienceProviderType))redirect(`/auth/sign-up?type=host&tier=${selection!.publicTier}&vertical=experience&error=${encodeURIComponent('Choose a valid Experience Partner type')}`);
   const role=type==='host'?(vertical==='experience'?'experience_partner':'hotel_partner'):'traveler';
   const destination=creatorIntent?`/creators/apply?tier=${creatorTier}`:type==='host'&&vertical==='experience'?'/portal/onboarding/experience':'/portal/onboarding';
-  const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:`${process.env.NEXT_PUBLIC_SITE_URL??'https://founding.ramahdigital.online'}/auth/confirm?next=${encodeURIComponent(destination)}`,data:{
+  const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:`${PUBLIC_SITE_URL}/auth/confirm?next=${encodeURIComponent(destination)}`,data:{
     role,
     full_name:name,
     business_name:type==='host'?businessName:undefined,
@@ -111,7 +112,7 @@ export async function resendSignupCode(form:FormData){
 
 export async function requestPasswordReset(form:FormData){
   const sb=await createClient(),email=text(form,'email');
-  await sb.auth.resetPasswordForEmail(email,{redirectTo:`${process.env.NEXT_PUBLIC_SITE_URL??'https://founding.ramahdigital.online'}/auth/confirm?next=/auth/reset-password`});
+  await sb.auth.resetPasswordForEmail(email,{redirectTo:`${PUBLIC_SITE_URL}/auth/confirm?next=/auth/reset-password`});
   redirect(`/auth/verify-recovery?email=${encodeURIComponent(email)}`);
 }
 
