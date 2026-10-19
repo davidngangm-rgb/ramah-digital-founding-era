@@ -87,6 +87,16 @@ test("Creator recruitment is free and deferred",async({page})=>{
   await expect(page.locator('input[name="tier"]')).toHaveValue("creator_pro");
 });
 
+test("email OTP screen offers a six-digit entry and a guarded resend action",async({page})=>{
+  await page.goto("/auth/verify-email?email=test%40example.com&next=%2Fportal%2Fonboarding",{waitUntil:"domcontentloaded"});
+  const code=page.getByLabel("Six-digit verification code");
+  await expect(code).toHaveAttribute("pattern","[0-9]{6}");
+  await expect(code).toHaveAttribute("autocomplete","one-time-code");
+  await expect(page.getByRole("button",{name:"Verify and continue"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Send a new code"})).toBeEnabled();
+  await expect(page.getByRole("link",{name:"Sign in"})).toBeVisible();
+});
+
 test("mobile menu is keyboard reachable",async({page},testInfo)=>{
   test.skip(testInfo.project.name.startsWith("desktop"),"Mobile navigation is intentionally hidden on desktop.");
   await page.goto("/",{waitUntil:"networkidle"});

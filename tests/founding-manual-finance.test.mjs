@@ -106,7 +106,7 @@ test('rejected or unauthorized paths cannot receive Finance or active privileges
 test('dashboard uses the official pending and active confirmation states',()=>{
   const submitted=read('components/ApplicationSubmittedState.tsx');
   const dashboard=read('app/portal/page.tsx');
-  for(const copy of ['Thank you for joining the','successfully submitted to the Ramah Digital Founding Team','Finance Team will contact you','Pending review'])assert.match(submitted,new RegExp(copy));
+  for(const copy of ['Thank you for applying to the','Your application has been received and is awaiting review','Finance Team will contact you','Do not make any payment to an unverified account or individual','Founder Admin makes the final approval decision'])assert.match(submitted,new RegExp(copy));
   assert.match(dashboard,/Your membership is now active/);
   assert.match(dashboard,/eligible privileges have been assigned/);
 });

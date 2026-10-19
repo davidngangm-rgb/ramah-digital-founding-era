@@ -1,29 +1,37 @@
 import {tierName} from '@/lib/memberships';
 
+type Application={id:string;application_type:string;status:string;requested_tier_code:string|null;submitted_at:string;review_reason?:string|null};
 type Stage={label:string;complete:boolean;detail?:string};
 
-export function ApplicationSubmittedState({displayName,application,profileComplete,identity,badges,certificateReady,hallEligible,paymentStatus,notice}:{displayName:string;application:{application_type:string;status:string;requested_tier_code:string|null;submitted_at:string};profileComplete:boolean;identity?:{founderNumber?:string|null}|null;badges?:unknown[];certificateReady:boolean;hallEligible:boolean;paymentStatus?:string;notice?:string}){
-  const reviewed=['approved','rejected'].includes(application.status),approved=application.status==='approved',founderAssigned=Boolean(identity?.founderNumber),creator=application.application_type==='creator',paymentNotRequired=creator||application.requested_tier_code==='community_host';
+const statusLabel=(status:string)=>status.replaceAll('_',' ').replace(/\b\w/g,letter=>letter.toUpperCase());
+
+export function ApplicationSubmittedState({displayName,category,application,identity,badges,certificateReady,paymentStatus,membershipActive,notice}:{displayName:string;category:string;application:Application;identity?:{founderNumber?:string|null}|null;badges?:unknown[];certificateReady:boolean;paymentStatus?:string;membershipActive:boolean;notice?:string}){
+  const active=membershipActive,creator=application.application_type==='creator',community=application.requested_tier_code==='community_host',paymentNotRequired=creator||community;
+  const financeVerified=paymentStatus==='verified';
   const stages:Stage[]=[
-    {label:'Account Created',complete:true},
-    {label:'Profile Completed',complete:profileComplete},
-    {label:'Founding Application Submitted',complete:true,detail:new Date(application.submitted_at).toLocaleDateString('en',{dateStyle:'long'})},
-    {label:'Founding Team Review',complete:reviewed,detail:application.status.replaceAll('_',' ')},
-    {label:paymentNotRequired?'Membership payment not required':'Finance verification',complete:paymentNotRequired||paymentStatus==='verified',detail:paymentNotRequired?'Not required':paymentStatus?.replaceAll('_',' ')},
-    {label:'Founder Approval',complete:approved},
-    {label:'Founder Number Assignment',complete:founderAssigned,detail:identity?.founderNumber??undefined},
-    {label:'Founder Badge Issued',complete:Boolean(badges?.length)},
-    {label:'Founder Certificate Issued',complete:certificateReady},
-    {label:'Founder Hall Eligibility',complete:hallEligible},
+    {label:'Application received',complete:true,detail:new Date(application.submitted_at).toLocaleDateString('en',{dateStyle:'long'})},
+    {label:'Founding Team review',complete:['under_review','approved','rejected'].includes(application.status),detail:statusLabel(application.status)},
+    {label:paymentNotRequired?'Membership payment not required':'Finance payment verification',complete:paymentNotRequired||financeVerified,detail:paymentNotRequired?'Not required':paymentStatus?statusLabel(paymentStatus):'Awaiting Finance instructions'},
+    {label:'Founder Admin decision',complete:['approved','rejected'].includes(application.status),detail:application.status==='approved'?'Approved':application.status==='rejected'?'Not approved':undefined},
+    {label:'Membership activation',complete:active,detail:active?'Active':'Only after applicable checks and final approval'},
+    {label:'Founder number and badge',complete:Boolean(identity?.founderNumber&&badges?.length),detail:identity?.founderNumber??undefined},
+    {label:'Digital certificate',complete:certificateReady},
   ];
+  const paymentMessage=creator
+    ?'Creator recruitment is currently free. No payment is due, and paid Creator Plus or Pro activation remains deferred.'
+    :community
+      ?'Your selected Community Partner membership is free. No membership payment is required.'
+      :financeVerified
+        ?'Finance has recorded payment verification. Payment verification alone does not activate your membership; the Founding Team and Founder Admin review must still be completed.'
+        :'If your selected membership requires payment, our Finance Team will contact you using your registered contact details with official instructions. Please wait for those instructions. Do not make any payment to an unverified account or individual.';
   return <div className="submitted-dashboard">
-    <section className="submitted-hero"><div><span className="eyebrow light">Status · Pending review</span><h1>Thank you for joining the<br/><em>Ramah Founding Era.</em></h1><p>Your application has been successfully submitted to the Ramah Digital Founding Team for review.</p><p>{creator?'Creator recruitment is currently free. Paid Creator membership activation remains deferred, and no payment has been requested.':paymentNotRequired?'Your selected membership does not require a membership payment. The Founding Team will complete the eligibility review before activation.':'Our Finance Team will contact you through your registered email address with the next steps, including payment instructions applicable to your selected membership.'}</p><p>You can follow your application status here in your Founding Era dashboard.</p><p>We appreciate your decision to be part of Ramah&apos;s beginning. Your journey with us starts here.</p>{notice&&<div className="notice" role="status">{notice}</div>}</div><aside><small>Application</small><strong>{application.application_type==='creator'?'Founding Creator':application.application_type==='host'?'Founding Partner':'Founding Traveler'}</strong><span>{tierName(application.requested_tier_code)}</span><i>Pending review</i></aside></section>
+    <section className="submitted-hero"><div><span className="eyebrow light">Founding Era application</span><h1>Thank you for applying to the<br/><em>Ramah Digital Founding Era.</em></h1><p>Your application has been received and is awaiting review.</p><p>Our team will review your submitted information. {paymentMessage}</p><p>Your Founding Era membership, recognition and benefits will become active only after the applicable review, payment verification and final approval processes are completed.</p><p>You can return to this dashboard later to follow the latest status.</p>{notice&&<div className="notice" role="status">{notice}</div>}</div><aside><small>Application status</small><strong>{statusLabel(application.status)}</strong><span>{category}</span><b>{tierName(application.requested_tier_code)}</b><small>Reference</small><code>{application.id}</code><small>Submitted</small><time dateTime={application.submitted_at}>{new Date(application.submitted_at).toLocaleDateString('en',{dateStyle:'long'})}</time></aside></section>
 
-    <section className="submitted-content"><article className="payment-instructions"><span className="eyebrow">What happens next</span><h2>Founder review.</h2><p>The Ramah Digital Founding Team will review the information submitted with your application.</p><div><p>After the required checks:</p><ul>{!paymentNotRequired&&<li>Finance independently verifies the applicable external membership payment</li>}<li>The Founding Admin makes the final approval decision</li><li>Your approved membership is activated and its eligible privileges are assigned</li><li>Your Founder identity, badge and credential appear here when supported</li></ul></div><strong className="payment-wait">Do not send card or banking credentials through this website. Finance will contact you by registered email if payment applies.</strong></article>
+    <section className="submitted-content"><article className="payment-instructions"><span className="eyebrow">What happens next</span><h2>{application.status==='under_review'?'Your application is being reviewed.':'Review comes first.'}</h2><p>The Ramah Digital Founding Team will review the information submitted with your application. If more information is needed, follow the instructions shown in this dashboard.</p><div><p>Next steps for your selected membership:</p><ul>{!paymentNotRequired&&<li>Finance contacts you with official payment instructions where applicable and records verification separately.</li>}<li>Founder Admin makes the final approval decision after required checks.</li><li>Only then are the approved tier, badge and eligible privileges activated on your Ramah account.</li></ul></div><strong className="payment-wait">Never send card or banking credentials through this website, and do not pay an unverified account or individual.</strong>{application.review_reason&&<p className="review-note"><b>Founding Team update:</b> {application.review_reason}</p>}</article>
 
-      <article className="application-timeline"><header><span className="eyebrow">Your Founder journey</span><h2>Every step,<br/>truthfully recorded.</h2></header><ol>{stages.map((stage,index)=><li className={stage.complete?'complete':'pending'} key={stage.label}><span>{stage.complete?'✓':'○'}</span><div><small>{String(index+1).padStart(2,'0')}</small><b>{stage.label}</b>{stage.detail&&<em>{stage.detail}</em>}</div></li>)}</ol></article>
+      <article className="application-timeline"><header><span className="eyebrow">Your application</span><h2>Progress recorded<br/>from the real review status.</h2></header><ol>{stages.map((stage,index)=><li className={stage.complete?'complete':'pending'} key={stage.label}><span aria-hidden="true">{stage.complete?'✓':'○'}</span><div><small>{String(index+1).padStart(2,'0')}</small><b>{stage.label}</b>{stage.detail&&<em>{stage.detail}</em>}</div></li>)}</ol></article>
     </section>
 
-    <section className="submitted-closing"><span className="eyebrow light">Before the world discovers it</span><h2>Thank you for believing<br/>in Ramah Digital.</h2><p>You are now standing at the door of something extraordinary.</p><p>Once your application is approved and activated, your permanent Founder identity—including your Founder Number, Founder Badge, credential, and Founding membership—will appear here.</p><strong>We are honored to have you begin this journey with us, {displayName.split(' ')[0]}.</strong></section>
+    <section className="submitted-closing"><span className="eyebrow light">Your Ramah account</span><h2>Your application stays<br/>with you here.</h2><p>Your saved onboarding and submitted application remain connected to this account. Sign in again any time to check for a review update.</p><strong>Thank you for beginning this journey with us, {displayName.split(' ')[0]}.</strong></section>
   </div>;
 }

@@ -87,7 +87,7 @@ export async function signUp(form:FormData){
       role,
       business_name:type==='host'?businessName:null,
       property_type:type==='host'&&vertical==='stay'?propertyType:null,
-    },{onConflict:'id'});
+    },{onConflict:'id',ignoreDuplicates:true});
     if(profileError)redirect(`${retryPath}&error=${encodeURIComponent('Your account is ready, but your Ramah profile could not be initialized. Please sign in and try again.')}`);
   }
 
@@ -100,14 +100,16 @@ export async function verifySignupCode(form:FormData){
   const {data,error}=await sb.auth.verifyOtp({email,token,type:'signup'});
   if(error||!data.user)redirect(`/auth/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}&error=${encodeURIComponent(error?.message??'Verification failed')}`);
   const metadata=data.user.user_metadata;
-  await sb.from('profiles').upsert({id:data.user.id,email:data.user.email??email,full_name:String(metadata.full_name??''),role:String(metadata.role??'traveler'),business_name:metadata.business_name??null,property_type:metadata.property_type??null},{onConflict:'id'});
+  const {error:profileError}=await sb.from('profiles').upsert({id:data.user.id,email:data.user.email??email,full_name:String(metadata.full_name??''),role:String(metadata.role??'traveler'),business_name:metadata.business_name??null,property_type:metadata.property_type??null},{onConflict:'id',ignoreDuplicates:true});
+  if(profileError)redirect(`/auth/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}&error=${encodeURIComponent('Your email is verified, but profile setup needs attention. Sign in and contact Ramah support if this continues.')}`);
   redirect(next);
 }
 
 export async function resendSignupCode(form:FormData){
   const sb=await createClient(),email=text(form,'email'),next=safeNext(text(form,'next'));
   const {error}=await sb.auth.resend({type:'signup',email});
-  redirect(`/auth/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}&${error?`error=${encodeURIComponent(error.message)}`:'resent=1'}`);
+  const message=error?.message.toLowerCase().includes('rate limit')?'Please wait before requesting another code. Supabase is temporarily limiting verification emails.':error?.message;
+  redirect(`/auth/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}&${error?`error=${encodeURIComponent(message??'Unable to send a new code. Please try again shortly.')}`:'resent=1'}`);
 }
 
 export async function requestPasswordReset(form:FormData){

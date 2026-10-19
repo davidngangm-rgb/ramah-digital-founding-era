@@ -40,7 +40,7 @@ test('synthetic Traveler media persists through the live website and private doc
     await page.locator('input[name="country"]').fill('Kenya');
     await page.locator('input[name="city"]').fill('Nairobi');
     await page.locator('form:has(input[data-upload-output="avatarUrl"]) button[type="submit"]').click();
-    await expect(page).toHaveURL(/notice=Profile(?:%20|\+)saved/,{timeout:60_000});
+    await expect(page).toHaveURL(/\/portal\/apply\?notice=Profile(?:%20|\+)saved/,{timeout:60_000});
     await expect(page.getByText('Profile saved')).toBeVisible();
     console.log('Synthetic upload check: verifying profile and Storage references');
     const {data:profile,error:profileError}=await admin.from('profiles').select('avatar_url,cover_url,full_name,location').eq('id',userIds[0]).single();
