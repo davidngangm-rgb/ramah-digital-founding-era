@@ -53,8 +53,12 @@ test('application confirmation uses persisted application identity, status, tier
 });
 
 test('email verification accepts six-digit signup OTP, handles retry, resend throttling, and link callbacks',()=>{
-  const page=read('app/auth/verify-email/page.tsx'),resend=read('components/ResendSignupCodeForm.tsx'),actions=read('app/auth/actions.ts'),confirm=read('app/auth/confirm/route.ts');
-  assert.match(page,/pattern="\[0-9\]\{6\}"/);
+  const page=read('app/auth/verify-email/page.tsx'),otp=read('components/OtpCodeInput.tsx'),resend=read('components/ResendSignupCodeForm.tsx'),actions=read('app/auth/actions.ts'),confirm=read('app/auth/confirm/route.ts');
+  assert.match(page,/OtpCodeInput/);
+  assert.match(otp,/pattern="\[0-9\]\{6\}"/);
+  assert.match(otp,/inputMode="numeric"/);
+  assert.match(otp,/autoComplete="one-time-code"/);
+  assert.match(otp,/replace\(\/\\D\/g,''\)/);
   assert.match(page,/verifySignupCode/);
   assert.match(page,/ResendSignupCodeForm/);
   assert.match(resend,/COOLDOWN_SECONDS=60/);
@@ -65,6 +69,23 @@ test('email verification accepts six-digit signup OTP, handles retry, resend thr
   assert.match(confirm,/exchangeCodeForSession\(code\)/);
   assert.match(confirm,/verifyOtp\(\{token_hash:tokenHash!/);
   assert.match(confirm,/requestedType==='recovery'/);
+});
+
+test('authentication uses the real Ramah asset and shared accessible pending-action control',()=>{
+  const brand=read('components/AuthBrand.tsx'),button=read('components/ActionSubmitButton.tsx'),css=read('styles/founding-platform.css');
+  assert.match(brand,/ramah-app-icon\.png/);
+  assert.match(brand,/Ramah Digital home/);
+  assert.match(button,/useFormStatus/);
+  assert.match(button,/disabled=\{disabled\|\|busy\}/);
+  assert.match(button,/aria-busy=\{busy\|\|undefined\}/);
+  assert.match(button,/useFormStatus\(\)/);
+  assert.match(button,/data\.get\(props\.name\)/);
+  assert.match(button,/action-submit__spinner/);
+  for(const route of ['sign-in','sign-up','verify-email','verify-recovery','forgot-password','reset-password']){
+    assert.match(read(`app/auth/${route}/page.tsx`),/AuthBrand/);
+  }
+  assert.match(css,/prefers-reduced-motion: reduce/);
+  assert.match(css,/\.otp-code__slots/);
 });
 
 test('Founding submission still uses canonical server RPC and does not activate membership',()=>{

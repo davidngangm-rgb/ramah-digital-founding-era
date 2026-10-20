@@ -99,7 +99,11 @@ export async function verifySignupCode(form:FormData){
   const sb=await createClient(),email=text(form,'email'),token=text(form,'token'),next=safeNext(text(form,'next'));
   if(!/^\d{6}$/.test(token))redirect(`/auth/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}&error=${encodeURIComponent('Enter the six-digit verification code.')}`);
   const {data,error}=await sb.auth.verifyOtp({email,token,type:'signup'});
-  if(error||!data.user)redirect(`/auth/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}&error=${encodeURIComponent(error?.message??'Verification failed')}`);
+  if(error||!data.user){
+    const detail=error?.message.toLowerCase()??'';
+    const message=detail.includes('expired')?'This code has expired. Request a new code and try again.':detail.includes('token')||detail.includes('otp')?'That code is not valid. Check the six digits and try again.':'We could not verify that code. Request a new one if the problem continues.';
+    redirect(`/auth/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}&error=${encodeURIComponent(message)}`);
+  }
   const metadata=data.user.user_metadata;
   const {error:profileError}=await sb.from('profiles').upsert({id:data.user.id,email:data.user.email??email,full_name:String(metadata.full_name??''),role:String(metadata.role??'traveler'),business_name:metadata.business_name??null,property_type:metadata.property_type??null},{onConflict:'id',ignoreDuplicates:true});
   if(profileError)redirect(`/auth/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}&error=${encodeURIComponent('Your email is verified, but profile setup needs attention. Sign in and contact Ramah support if this continues.')}`);
@@ -110,13 +114,15 @@ export async function verifySignupCode(form:FormData){
 export async function resendSignupCode(form:FormData){
   const sb=await createClient(),email=text(form,'email'),next=safeNext(text(form,'next'));
   const {error}=await sb.auth.resend({type:'signup',email});
-  const message=error?.message.toLowerCase().includes('rate limit')?'Please wait before requesting another code. Supabase is temporarily limiting verification emails.':error?.message;
-  redirect(`/auth/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}&${error?`error=${encodeURIComponent(message??'Unable to send a new code. Please try again shortly.')}`:'resent=1'}`);
+  const rateLimited=Boolean(error&&/rate.?limit|too many requests/i.test(error.message));
+  const message=rateLimited?'Please wait before requesting another code. Supabase is temporarily limiting verification emails.':'Unable to send a new code. Please try again shortly.';
+  redirect(`/auth/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}&${error?`error=${encodeURIComponent(message)}${rateLimited?'&cooldown=1':''}`:'resent=1'}`);
 }
 
 export async function requestPasswordReset(form:FormData){
   const sb=await createClient(),email=text(form,'email');
-  await sb.auth.resetPasswordForEmail(email,{redirectTo:`${PUBLIC_SITE_URL}/auth/confirm?next=/auth/reset-password`});
+  const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:`${PUBLIC_SITE_URL}/auth/confirm?next=/auth/reset-password`});
+  if(error)redirect(`/auth/forgot-password?error=${encodeURIComponent('Unable to request a recovery message right now. Please try again shortly.')}`);
   redirect(`/auth/verify-recovery?email=${encodeURIComponent(email)}`);
 }
 
@@ -124,7 +130,11 @@ export async function verifyRecoveryCode(form:FormData){
   const sb=await createClient(),email=text(form,'email'),token=text(form,'token');
   if(!/^\d{6}$/.test(token))redirect(`/auth/verify-recovery?email=${encodeURIComponent(email)}&error=${encodeURIComponent('Enter the six-digit recovery code.')}`);
   const {error}=await sb.auth.verifyOtp({email,token,type:'recovery'});
-  if(error)redirect(`/auth/verify-recovery?email=${encodeURIComponent(email)}&error=${encodeURIComponent(error.message)}`);
+  if(error){
+    const detail=error.message.toLowerCase();
+    const message=detail.includes('expired')?'This recovery code has expired. Request a new recovery email.':detail.includes('token')||detail.includes('otp')?'That recovery code is not valid. Check the six digits and try again.':'We could not verify that recovery code. Request another if the problem continues.';
+    redirect(`/auth/verify-recovery?email=${encodeURIComponent(email)}&error=${encodeURIComponent(message)}`);
+  }
   redirect('/auth/reset-password');
 }
 

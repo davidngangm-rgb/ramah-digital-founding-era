@@ -7,6 +7,7 @@ import {createClient} from '@/lib/supabase/browser';
 import {captureUploadSubmission} from '@/lib/upload-submission';
 import {validateUpload,validateUploadContent} from '@/lib/upload-policy';
 import {trackRamahEvent,type ApplicantCategory} from '@/lib/analytics';
+import {ActionSubmitButton} from '@/components/ActionSubmitButton';
 
 type SaveResult={ok:true;href:string}|{ok:false;error:string};
 type ServerAction=(formData:FormData)=>Promise<SaveResult>;
@@ -149,6 +150,6 @@ export function DirectUploadForm({action,className,children,initialMedia=[]}:{ac
       {Object.entries(progress).map(([key,value])=><div className="upload-progress" key={key}><span><b>Uploading media</b><small>{value}%</small></span><progress max="100" value={value}>{value}%</progress></div>)}
       {error&&<p className="form-error" role="alert">{error} Your selections are preserved—use the button to retry.</p>}
     </div>}
-    <button className="button dark wide" type="submit" disabled={busy}>{busy?saving?'Saving your application…':'Uploading securely…':error?'Retry upload and save':'Save and continue'}</button>
+    <ActionSubmitButton className="button dark wide" type="submit" isLoading={busy} loadingText={saving?'Saving your application…':'Uploading securely…'}>{error?'Retry upload and save':'Save and continue'}</ActionSubmitButton>
   </form>;
 }

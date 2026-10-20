@@ -1,6 +1,7 @@
 import type {Metadata} from 'next';
 import Link from 'next/link';
 import {AuthForm} from '@/components/AuthForm';
+import {AuthBrand} from '@/components/AuthBrand';
 import {parseMembershipSelection,publicTierCodes,tiersFor,type MembershipKind} from '@/lib/memberships';
 import {presentedTier,tiersForPath,type FoundingPath} from '@/lib/foundingPresentation';
 
@@ -16,7 +17,7 @@ export default async function Page({searchParams}:{searchParams:Promise<Record<s
   const signInNext=creatorIntent?`/creators/apply?tier=${q.tier??''}&creatorTier=${q.tier??''}${q.ref?`&ref=${q.ref}`:''}`:`${type==='host'&&vertical==='experience'?'/portal/onboarding/experience':'/portal/onboarding'}?type=${type}&tier=${selection?.publicTier??''}${type==='host'?`&vertical=${vertical}`:''}${q.ref?`&ref=${q.ref}`:''}`;
 
   return <main id="main" className="auth-page">
-    <Link className="brand auth-brand" href="/"><span>R</span><b>RAMAH</b></Link>
+    <AuthBrand />
     <section>
       <aside className="auth-context"><span className="eyebrow">Founding Era · Account</span><h1>{creatorIntent?'Create your account, then apply.':'Create your Ramah account.'}</h1><p>{creatorIntent?'Creator recruitment is free. Founder approval does not charge you or activate paid capabilities. This account can still hold Traveler or Partner roles later.':'Creating an account does not reserve or assign a Founder Number. Complete onboarding and submit for Founder review.'}</p><div className="type-toggle"><Link className={!creatorIntent&&type==='traveler'?'active':''} href="/founding-era/travelers">Traveler</Link><Link className={!creatorIntent&&type==='host'&&vertical==='stay'?'active':''} href="/founding-era/partners?vertical=stay">Stay Partner</Link><Link className={!creatorIntent&&type==='host'&&vertical==='experience'?'active':''} href="/founding-era/partners?vertical=experience">Experience Partner</Link><Link className={creatorIntent?'active':''} href="/founding-era/creators">Creator</Link></div>
         {selectedPresentation&&<div className="auth-privileges" aria-label="Selected membership privileges"><span>Selected membership</span><h2>{selectedPresentation.name}</h2><strong>{selectedPresentation.price===0?'Free':`US$${selectedPresentation.price}`} <small>{selectedPresentation.paymentTiming}</small></strong><p>{selectedPresentation.summary}</p><ul>{selectedPresentation.benefits.slice(0,5).map(benefit=><li key={benefit}>{benefit}</li>)}</ul><div>{selectedPresentation.conditions.map(condition=><small key={condition}>{condition}</small>)}</div></div>}
