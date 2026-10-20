@@ -3,6 +3,7 @@ import {signIn,signUp} from '@/app/auth/actions';
 import {PROPERTY_TYPES} from '@/lib/onboarding';import Link from 'next/link';
 import {trackRamahEvent,type ApplicantCategory} from '@/lib/analytics';
 import {ActionSubmitButton} from '@/components/ActionSubmitButton';
+import {useState} from 'react';
 
 export function AuthForm({mode,type='traveler',tier,vertical='stay',referral,error,next}:{mode:'in'|'up';type?:string;tier?:string;vertical?:'stay'|'experience';referral?:string;error?:string;next?:string}){
   const experiencePartner=mode==='up'&&type==='host'&&vertical==='experience';
@@ -14,8 +15,8 @@ export function AuthForm({mode,type='traveler',tier,vertical='stay',referral,err
     <input type="hidden" name="referral" value={referral}/>
     <input type="hidden" name="next" value={next}/>
     {mode==='up'&&<label>{type==='host'?'Authorized representative name':'Full name'}<input required autoComplete="name" name="name" minLength={2}/></label>}
-    <label>Email address<input required type="email" autoComplete="email" name="email" inputMode="email"/></label>
-    <label>Password<input required type="password" autoComplete={mode==='in'?'current-password':'new-password'} name="password" minLength={8}/></label>
+    <label>{mode==='in'?'Email':'Email address'}<input required type="email" autoComplete="email" name="email" inputMode="email"/></label>
+    <PasswordField mode={mode}/>
     {mode==='up'&&type==='host'&&!experiencePartner&&<><label>Property type<select name="propertyType" required defaultValue=""><option value="" disabled>Choose a property type</option>{PROPERTY_TYPES.map(value=><option key={value} value={value}>{value}</option>)}</select></label><label>Property name<input required name="businessName" minLength={2} autoComplete="organization" placeholder="e.g. Nile Riverside Lodge"/></label><small className="wide">This creates your Stay Partner account only. Your private property draft is created during onboarding.</small></>}
     {experiencePartner&&<><label>Business name<input required name="businessName" minLength={2} autoComplete="organization" placeholder="e.g. Coastline Culture Walks"/></label><label>Provider type<select name="experienceProviderType" required defaultValue=""><option value="" disabled>Choose a provider type</option><option value="experience_provider">Experience provider</option><option value="tour_operator">Tour operator</option></select></label><small className="wide">This creates your Experience Partner account only. Your business profile and first experience are completed privately after sign-in.</small></>}
     {error&&<p className="form-error" role="alert">{error}</p>}
@@ -23,4 +24,15 @@ export function AuthForm({mode,type='traveler',tier,vertical='stay',referral,err
     {mode==='in'&&<Link className="legal-link" href="/auth/forgot-password">Forgot your password?</Link>}
     <small>By continuing, you confirm that you have reviewed Ramah&apos;s <Link className="legal-link" href="/legal/terms" target="_blank" rel="noopener">Terms</Link> and acknowledge the <Link className="legal-link" href="/legal/privacy" target="_blank" rel="noopener">Privacy Policy</Link>. These links open in a new tab so this form remains available.</small>
   </form>;
+}
+
+function PasswordField({mode}:{mode:'in'|'up'}){
+  const [visible,setVisible]=useState(false);
+  return <div className="auth-password-field">
+    <label htmlFor="auth-password">Password</label>
+    <span className="auth-password-control">
+      <input id="auth-password" required type={visible?'text':'password'} autoComplete={mode==='in'?'current-password':'new-password'} name="password" minLength={8}/>
+      <button className="auth-password-toggle" type="button" aria-label={visible?'Hide password':'Show password'} aria-pressed={visible} onClick={()=>setVisible(value=>!value)}>{visible?'Hide':'Show'}</button>
+    </span>
+  </div>;
 }

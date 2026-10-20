@@ -1,0 +1,37 @@
+import Link from 'next/link';
+import {notFound,redirect} from 'next/navigation';
+import {createClient} from '@/lib/supabase/server';
+import {tierName} from '@/lib/memberships';
+
+const readable=(value?:string|null)=>value?.replaceAll('_',' ').replace(/\b\w/g,letter=>letter.toUpperCase())??'Not available';
+type Snapshot=Record<string,unknown>;
+
+export default async function ApplicantApplicationDetail({params}:{params:Promise<{id:string}>}){
+  const {id}=await params,sb=await createClient(),{data:{user}}=await sb.auth.getUser();
+  if(!user)redirect(`/auth/sign-in?next=${encodeURIComponent(`/portal/applications/${id}`)}`);
+  const [{data:application,error},{data:profile},{data:documents},{data:payment}]=await Promise.all([
+    sb.from('founding_applications').select('id,application_type,status,requested_tier_code,submitted_at,reviewed_at,approved_at,activated_at,review_reason,applicant_note,eligibility_snapshot').eq('id',id).eq('applicant_user_id',user.id).maybeSingle(),
+    sb.from('profiles').select('full_name,business_name,email,phone,country,location').eq('id',user.id).maybeSingle(),
+    sb.from('founding_verification_documents').select('id,document_type,storage_path,original_name,review_status,created_at').eq('owner_user_id',user.id).order('created_at',{ascending:false}),
+    sb.from('circle_membership_payments').select('status,provider,submitted_at,verified_at,rejection_reason').eq('application_id',id).order('created_at',{ascending:false}).limit(1).maybeSingle(),
+  ]);
+  if(error||!application)notFound();
+  const paths=(documents??[]).map(document=>document.storage_path),{data:signed}=paths.length?await sb.storage.from('founding-verification-documents').createSignedUrls(paths,600):{data:[]};
+  const signedByPath=new Map((signed??[]).map(item=>[item.path,item.signedUrl]));
+  const category=application.application_type==='creator'?'Founding Creator':application.application_type==='host'?'Founding Partner':'Founding Traveler';
+  const snapshot=(application.eligibility_snapshot as Snapshot|undefined)?.applicationSnapshot as Snapshot|undefined;
+  return <div className="member-application-detail">
+    <Link className="admin-back-link" href="/portal#applications">← Back to my applications</Link>
+    <header className="member-detail-heading"><div><span className="eyebrow">Your Ramah application</span><h1>{category}</h1><p>{profile?.full_name??profile?.business_name??'Your account'} · {tierName(application.requested_tier_code)}</p></div><span className={`founding-status founding-status--${application.status.replaceAll('_','-')}`}>{readable(application.status)}</span></header>
+    <div className="member-detail-grid"><main>
+      <section className="founding-dashboard__panel"><span className="eyebrow">Application record</span><h2>Submitted information</h2><dl className="founding-dashboard__facts"><Fact label="Reference" value={application.id}/><Fact label="Category" value={category}/><Fact label="Selected membership" value={tierName(application.requested_tier_code)}/><Fact label="Submitted" value={new Date(application.submitted_at).toLocaleString('en',{dateStyle:'long',timeStyle:'short'})}/><Fact label="Last review" value={application.reviewed_at?new Date(application.reviewed_at).toLocaleString('en',{dateStyle:'long',timeStyle:'short'}):'Not reviewed yet'}/><Fact label="Approval date" value={application.approved_at?new Date(application.approved_at).toLocaleString('en',{dateStyle:'long',timeStyle:'short'}):'Not approved'}/><Fact label="Activation date" value={application.activated_at?new Date(application.activated_at).toLocaleString('en',{dateStyle:'long',timeStyle:'short'}):'Not active'}/><Fact label="Applicant note" value={application.applicant_note}/><Fact label="Latest team update" value={application.review_reason}/></dl></section>
+      <section className="founding-dashboard__panel"><span className="eyebrow">Submission snapshot</span><h2>Information at the time of submission</h2>{snapshot?<SnapshotView value={snapshot}/>:<p>The application is saved. A submission snapshot is not available for this record.</p>}</section>
+      <section className="founding-dashboard__panel"><span className="eyebrow">Your documents</span><h2>Private verification files</h2><p>These files are private to your account and authorized Ramah reviewers. Secure links expire after ten minutes.</p><div className="member-documents">{(documents??[]).map(document=>{const url=signedByPath.get(document.storage_path);return <article key={document.id}><div><b>{readable(document.document_type)}</b><span>{document.original_name} · {readable(document.review_status)}</span></div>{url?<a href={url} target="_blank" rel="noreferrer">Open securely</a>:<small>Preview unavailable</small>}</article>})}{!documents?.length&&<p>No verification files are attached to this account.</p>}</div></section>
+    </main><aside>
+      <section className="founding-dashboard__panel"><span className="eyebrow">Review progress</span><h2>{readable(application.status)}</h2><p>The Founding Team’s current decision is shown here. Membership benefits and recognition remain inactive until the authorized review and activation steps are complete.</p><ol className="member-application-timeline"><li className="complete"><b>Application submitted</b><time>{new Date(application.submitted_at).toLocaleDateString('en',{dateStyle:'medium'})}</time></li><li className={application.reviewed_at?'complete':'pending'}><b>Founding Team review</b><span>{application.reviewed_at?readable(application.status):'Awaiting review'}</span></li><li className={payment?.status==='verified'?'complete':'pending'}><b>Finance verification</b><span>{application.application_type==='creator'?'Deferred during free recruitment':application.requested_tier_code==='community_host'?'Not required':readable(payment?.status??'pending')}</span></li><li className={application.activated_at?'complete':'pending'}><b>Membership activation</b><span>{application.activated_at?'Active':'Only after final approval'}</span></li></ol></section>
+      <section className="founding-dashboard__panel"><span className="eyebrow">Payment status</span><h2>{application.application_type==='creator'?'No payment requested':application.requested_tier_code==='community_host'?'Not required':readable(payment?.status??'awaiting Finance instructions')}</h2><p>{payment?.status==='verified'?'Finance has independently verified the payment. Founder Admin approval is still required before activation.':payment?.status==='rejected'?(payment.rejection_reason??'Finance requires follow-up.'):application.application_type==='creator'?'Creator recruitment is currently free; Creator Plus and Pro paid activation remain deferred.':application.requested_tier_code==='community_host'?'Community Partner membership is free; no payment is required.':'If payment applies to your selected tier, Finance will contact you using your registered contact details. Wait for official instructions and do not pay an unverified person or account.'}</p></section>
+    </aside></div>
+  </div>;
+}
+function Fact({label,value}:{label:string;value:string}){return <div><dt>{label}</dt><dd>{value}</dd></div>}
+function SnapshotView({value}:{value:Snapshot}){return <dl className="member-snapshot">{Object.entries(value).filter(([key,val])=>key!=='capturedAt'&&val!==null&&val!==undefined).map(([key,val])=><div key={key}><dt>{readable(key)}</dt><dd>{typeof val==='object'?<pre>{JSON.stringify(val,null,2)}</pre>:String(val)}</dd></div>)}</dl>}
