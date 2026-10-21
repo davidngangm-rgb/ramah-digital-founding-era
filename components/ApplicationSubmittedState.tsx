@@ -5,7 +5,7 @@ type Stage={label:string;complete:boolean;detail?:string};
 
 const statusLabel=(status:string)=>status.replaceAll('_',' ').replace(/\b\w/g,letter=>letter.toUpperCase());
 
-export function ApplicationSubmittedState({displayName,category,application,identity,badges,certificateReady,paymentStatus,membershipActive,notice}:{displayName:string;category:string;application:Application;identity?:{founderNumber?:string|null}|null;badges?:unknown[];certificateReady:boolean;paymentStatus?:string;membershipActive:boolean;notice?:string}){
+export function ApplicationSubmittedState({displayName,category,application,identity,badges,paymentStatus,membershipActive,notice}:{displayName:string;category:string;application:Application;identity?:{founderNumber?:string|null}|null;badges?:unknown[];paymentStatus?:string;membershipActive:boolean;notice?:string}){
   const active=membershipActive,creator=application.application_type==='creator',community=application.requested_tier_code==='community_host',paymentNotRequired=creator||community;
   const financeVerified=paymentStatus==='verified';
   const stages:Stage[]=[
@@ -15,7 +15,6 @@ export function ApplicationSubmittedState({displayName,category,application,iden
     {label:'Founder Admin decision',complete:['approved','rejected'].includes(application.status),detail:application.status==='approved'?'Approved':application.status==='rejected'?'Not approved':undefined},
     {label:'Membership activation',complete:active,detail:active?'Active':'Only after applicable checks and final approval'},
     {label:'Founder number and badge',complete:Boolean(identity?.founderNumber&&badges?.length),detail:identity?.founderNumber??undefined},
-    {label:'Digital certificate',complete:certificateReady},
   ];
   const paymentMessage=creator
     ?'Creator recruitment is currently free. No payment is due, and paid Creator Plus or Pro activation remains deferred.'
